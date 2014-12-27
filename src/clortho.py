@@ -5,8 +5,15 @@ import argparse
 import pickle
 from aiohttp import web
 
+VERSION = "0.1"
 args = None
 keystore = {}
+
+@asyncio.coroutine
+def get_version(request):
+    text = "version: %s" % VERSION
+    status = 200
+    return web.Response(body=text.encode('utf-8'), status=status)
 
 @asyncio.coroutine
 def get_key(request):
@@ -59,6 +66,7 @@ def set_key(request):
 @asyncio.coroutine
 def init(loop, host, port):
     app = web.Application(loop=loop)
+    app.router.add_route('GET', '/version', get_version)
     app.router.add_route('GET', '/{key}', get_key)
     app.router.add_route('POST', '/{key}', set_key)
 
