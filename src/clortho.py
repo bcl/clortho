@@ -66,9 +66,9 @@ def set_key(request):
 @asyncio.coroutine
 def init(loop, host, port):
     app = web.Application(loop=loop)
-    app.router.add_route('GET', '/version', get_version)
-    app.router.add_route('GET', '/{key}', get_key)
-    app.router.add_route('POST', '/{key}', set_key)
+    app.router.add_route('GET', '/keystore/version', get_version)
+    app.router.add_route('GET', '/keystore/{key}', get_key)
+    app.router.add_route('POST', '/keystore/{key}', set_key)
 
     srv = yield from loop.create_server(app.make_handler(), host, port)
     print("Server started at http://%s:%s" % (host, port))
