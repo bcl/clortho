@@ -1,0 +1,38 @@
+clortho is a very simple key/value server written using python 3.4 and aiohttp
+
+key namespace is per-client IP address, and there is no authentication. It
+supports direct connections from clients, and X-Forwarded-For for use with
+proxies. I shouldn't have to mention that running this on an open network isn't
+a good idea.
+
+Get a key value by requesting http://server/keystore/<key>
+
+curl http://server/keystore/louis
+
+If the key has been set it will return a 200 status with the value. If the key
+is not set it will return a 404 and a message:
+
+louis doesn't exist for 192.168.1.100
+
+
+set a key value by POST to http://server/keystore/<key> with value=<value>
+
+curl --http1.0 --F value=keymaster http://server/keystore/louis
+OK
+
+If the key was set it will return a 200 and an OK message. If there was a
+problem it will return a 404 and ERROR as the response.
+
+One key, version, is hard-coded. This can be used to check to see if the
+keyserver is running, or which API version it is using.
+
+curl http://server/keystore/version
+version: 0.1
+
+The key store is read from the file specified by --keystore or from clortho.dat
+in the current directory. It is written on shutdown (SIGINT or SIGTERM). The
+store is simply a pickle of the keystore dict.
+
+The IP address and port to listen to can be set with --host and --port and
+default to 127.0.0.1 and 9001
+
