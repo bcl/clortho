@@ -121,6 +121,11 @@ def read_keystore(filename):
         except EOFError:
             keystore = {}
 
+@asyncio.coroutine
+def handle_usr1():
+    print("Got USR1 signal, saving keystore")
+    save_keystore(args.keystore)
+
 def save_keystore(filename):
     #TODO: Write to a tempfile first, rename to target
     with open(filename, "wb") as f:
@@ -134,5 +139,7 @@ if __name__=='__main__':
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), asyncio.async, clean_exit(signame))
+    loop.add_signal_handler(getattr(signal, 'SIGUSR1'), asyncio.async, handle_usr1())
+
     loop.run_until_complete(init(loop, args.host, int(args.port)))
     loop.run_forever()
