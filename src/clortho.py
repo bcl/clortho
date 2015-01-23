@@ -126,6 +126,10 @@ def handle_usr1():
     print("Got USR1 signal, saving keystore")
     save_keystore(args.keystore)
 
+def hourly_save_keystore(loop):
+    save_keystore(args.keystore)
+    loop.call_later(3600, hourly_save_keystore, loop)
+
 def save_keystore(filename):
     #TODO: Write to a tempfile first, rename to target
     with open(filename, "wb") as f:
@@ -140,6 +144,9 @@ if __name__=='__main__':
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), asyncio.async, clean_exit(signame))
     loop.add_signal_handler(getattr(signal, 'SIGUSR1'), asyncio.async, handle_usr1())
+
+    # Start saving the keys every hour
+    loop.call_later(3600, hourly_save_keystore, loop)
 
     loop.run_until_complete(init(loop, args.host, int(args.port)))
     loop.run_forever()
