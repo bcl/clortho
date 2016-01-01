@@ -36,6 +36,17 @@ def get_version(request):
     return web.Response(body=text.encode('utf-8'), status=status)
 
 @asyncio.coroutine
+def show_info(request):
+    text = "<pre>\n"
+    text += "\n".join("%s = %s" % (hdr, request.headers[hdr]) for hdr in request.headers)
+    peername = request.transport.get_extra_info('peername')
+    if peername is not None:
+        text += "\npeer = %s:%s\n" % (peername[0], peername[1])
+    text += "</pre>\n"
+
+    return web.Response(body=text.encode('utf-8'), status=200)
+
+@asyncio.coroutine
 def get_key(request):
     key = request.match_info.get('key')
 
@@ -87,6 +98,7 @@ def set_key(request):
 def init(loop, host, port):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/keystore/version', get_version)
+    app.router.add_route('GET', '/keystore/info', show_info)
     app.router.add_route('GET', '/keystore/{key}', get_key)
     app.router.add_route('POST', '/keystore/{key}', set_key)
 
