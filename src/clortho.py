@@ -29,6 +29,18 @@ VERSION = "1.0.0"
 args = None
 keystore = {}
 
+def get_client(request):
+    client = None
+    if "X-Forwarded-For" in request.headers:
+        client = request.headers["X-Forwarded-For"].split(",")[0]
+        if client.startswith("::ffff:"):
+            client = client[7:]
+    else:
+        peername = request.transport.get_extra_info('peername')
+        if peername is not None:
+                client, _port = peername
+    return client
+
 @asyncio.coroutine
 def get_version(request):
     text = "version: %s" % VERSION
@@ -50,14 +62,7 @@ def show_info(request):
 def get_key(request):
     key = request.match_info.get('key')
 
-    client = None
-    if "X-Forwarded-For" in request.headers:
-        client = request.headers["X-Forwarded-For"].split(",")[0]
-    else:
-        peername = request.transport.get_extra_info('peername')
-        if peername is not None:
-                client, _port = peername
-
+    client = get_client(request)
     if client and client in keystore and key in keystore[client]:
         text = keystore[client][key]
         status = 200
@@ -71,14 +76,7 @@ def set_key(request):
     key = request.match_info.get('key')
     post_data = yield from request.post()
 
-    client = None
-    if "X-Forwarded-For" in request.headers:
-        client = request.headers["X-Forwarded-For"].split(",")[0]
-    else:
-        peername = request.transport.get_extra_info('peername')
-        if peername is not None:
-                client, _port = peername
-
+    client = get_client(request)
     if client and key and "value" in post_data:
         if client not in keystore:
             keystore[client] = {}
