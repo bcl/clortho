@@ -1,6 +1,6 @@
 # clortho - A simple key/value server
 #
-# Copyright 2014 by Brian C. Lane <bcl@brianlane.com>
+# Copyright 2014-2017 by Brian C. Lane <bcl@brianlane.com>
 # All Rights Reserved
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@ import argparse
 import pickle
 from aiohttp import web
 
-VERSION = "0.1"
+VERSION = "1.0.0"
 args = None
 keystore = {}
 
