@@ -1,4 +1,4 @@
-clortho is a very simple key/value server written using python 3.4 and aiohttp
+clortho is a very simple key/value server written using python 3.5 and aiohttp
 
 key namespace is per-client IP address, and there is no authentication. It
 supports direct connections from clients, and X-Forwarded-For for use with

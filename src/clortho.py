@@ -41,14 +41,12 @@ def get_client(request):
                 client, _port = peername
     return client
 
-@asyncio.coroutine
-def get_version(request):
+async def get_version(request):
     text = "version: %s" % VERSION
     status = 200
     return web.Response(text=text, status=status)
 
-@asyncio.coroutine
-def show_info(request):
+async def show_info(request):
     text = "<html><body><pre>\n"
     text += "\n".join("%s = %s" % (hdr, request.headers[hdr]) for hdr in request.headers)
     peername = request.transport.get_extra_info('peername')
@@ -58,8 +56,7 @@ def show_info(request):
 
     return web.Response(text=text, content_type="text/html", status=200)
 
-@asyncio.coroutine
-def get_key(request):
+async def get_key(request):
     key = request.match_info.get('key')
 
     client = get_client(request)
@@ -71,10 +68,9 @@ def get_key(request):
         status = 404
     return web.Response(text=text, status=status)
 
-@asyncio.coroutine
-def set_key(request):
+async def set_key(request):
     key = request.match_info.get('key')
-    post_data = yield from request.post()
+    post_data = await request.post()
 
     client = get_client(request)
     if client and key and "value" in post_data:
@@ -92,20 +88,18 @@ def set_key(request):
 
     return web.Response(text=text, status=status)
 
-@asyncio.coroutine
-def init(loop, host, port):
+async def init(loop, host, port):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/keystore/version', get_version)
     app.router.add_route('GET', '/keystore/info', show_info)
     app.router.add_route('GET', '/keystore/{key}', get_key)
     app.router.add_route('POST', '/keystore/{key}', set_key)
 
-    srv = yield from loop.create_server(app.make_handler(), host, port)
+    srv = await loop.create_server(app.make_handler(), host, port)
     print("Server started at http://%s:%s" % (host, port))
     return srv
 
-@asyncio.coroutine
-def clean_exit(signame):
+async def clean_exit(signame):
     print("got signal %s, exiting" % signame)
     save_keystore(args.keystore)
 
@@ -131,8 +125,7 @@ def read_keystore(filename):
         except EOFError:
             keystore = {}
 
-@asyncio.coroutine
-def handle_usr1():
+async def handle_usr1():
     print("Got USR1 signal, saving keystore")
     save_keystore(args.keystore)
 
