@@ -45,18 +45,18 @@ def get_client(request):
 def get_version(request):
     text = "version: %s" % VERSION
     status = 200
-    return web.Response(body=text.encode('utf-8'), status=status)
+    return web.Response(text=text, status=status)
 
 @asyncio.coroutine
 def show_info(request):
-    text = "<pre>\n"
+    text = "<html><body><pre>\n"
     text += "\n".join("%s = %s" % (hdr, request.headers[hdr]) for hdr in request.headers)
     peername = request.transport.get_extra_info('peername')
     if peername is not None:
         text += "\npeer = %s:%s\n" % (peername[0], peername[1])
-    text += "</pre>\n"
+    text += "</pre></body></html>\n"
 
-    return web.Response(body=text.encode('utf-8'), status=200)
+    return web.Response(text=text, content_type="text/html", status=200)
 
 @asyncio.coroutine
 def get_key(request):
@@ -69,7 +69,7 @@ def get_key(request):
     else:
         text = "%s doesn't exist for %s" % (key, client)
         status = 404
-    return web.Response(body=text.encode('utf-8'), status=status)
+    return web.Response(text=text, status=status)
 
 @asyncio.coroutine
 def set_key(request):
@@ -90,7 +90,7 @@ def set_key(request):
         text = "ERROR"
         status = 404
 
-    return web.Response(body=text.encode('utf-8'), status=status)
+    return web.Response(text=text, status=status)
 
 @asyncio.coroutine
 def init(loop, host, port):
