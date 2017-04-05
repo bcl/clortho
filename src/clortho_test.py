@@ -8,6 +8,7 @@ from clortho import get_client, setup_app, VERSION
 @pytest.fixture
 def cli(loop, test_client):
     app = setup_app(loop)
+    app["keystore"] = {}
     return loop.run_until_complete(test_client(app))
 
 async def test_version(cli):

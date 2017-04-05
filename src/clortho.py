@@ -26,8 +26,6 @@ import pickle
 from aiohttp import web
 
 VERSION = "1.1.0"
-args = None
-keystore = {}
 
 def get_client(request):
     client = None
@@ -57,6 +55,7 @@ async def show_info(request):
     return web.Response(text=text, content_type="text/html", status=200)
 
 async def get_key(request):
+    keystore = request.app["keystore"]
     key = request.match_info.get('key')
 
     client = get_client(request)
@@ -69,6 +68,7 @@ async def get_key(request):
     return web.Response(text=text, status=status)
 
 async def set_key(request):
+    keystore = request.app["keystore"]
     key = request.match_info.get('key')
     post_data = await request.post()
 
@@ -96,18 +96,12 @@ def setup_app(loop):
     app.router.add_route('POST', '/keystore/{key}', set_key)
     return app
 
-async def init(loop, host, port):
+async def init(loop, host, port, keystore):
     app = setup_app(loop)
+    app["keystore"] = keystore
     srv = await loop.create_server(app.make_handler(), host, port)
     print("Server started at http://%s:%s" % (host, port))
     return srv
-
-async def clean_exit(signame):
-    print("got signal %s, exiting" % signame)
-    save_keystore(args.keystore)
-
-    loop = asyncio.get_event_loop()
-    loop.stop()
 
 def setup_parser():
     parser = argparse.ArgumentParser(description="Clortho key server")
@@ -119,24 +113,29 @@ def setup_parser():
 
 def read_keystore(filename):
     if not os.path.exists(filename):
-        return
+        return {}
 
-    global keystore
     with open(filename, "rb") as f:
         try:
-            keystore = pickle.load(f)
+            return pickle.load(f)
         except EOFError:
-            keystore = {}
+            return {}
 
-async def handle_usr1():
+def clean_exit(signame, loop, filename, keystore):
+    print("got signal %s, exiting" % signame)
+    save_keystore(filename, keystore)
+
+    loop.stop()
+
+def handle_usr1(filename, keystore):
     print("Got USR1 signal, saving keystore")
-    save_keystore(args.keystore)
+    save_keystore(filename, keystore)
 
-def hourly_save_keystore(loop):
-    save_keystore(args.keystore)
+def hourly_save_keystore(loop, filename, keystore):
+    save_keystore(filename, keystore)
     loop.call_later(3600, hourly_save_keystore, loop)
 
-def save_keystore(filename):
+def save_keystore(filename, keystore):
     #TODO: Write to a tempfile first, rename to target
     with open(filename, "wb") as f:
         pickle.dump(keystore, f, pickle.HIGHEST_PROTOCOL)
@@ -144,15 +143,15 @@ def save_keystore(filename):
 if __name__=='__main__':
     parser = setup_parser()
     args = parser.parse_args()
-    read_keystore(args.keystore)
+    keystore = read_keystore(args.keystore)
 
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
-        loop.add_signal_handler(getattr(signal, signame), asyncio.async, clean_exit(signame))
-    loop.add_signal_handler(getattr(signal, 'SIGUSR1'), asyncio.async, handle_usr1())
+        loop.add_signal_handler(getattr(signal, signame), clean_exit, *[signame, loop, args.keystore, keystore])
+    loop.add_signal_handler(getattr(signal, 'SIGUSR1'), handle_usr1, *[args.keystore, keystore])
 
     # Start saving the keys every hour
-    loop.call_later(3600, hourly_save_keystore, loop)
+    loop.call_later(3600, hourly_save_keystore, loop, args.keystore, keystore)
 
-    loop.run_until_complete(init(loop, args.host, int(args.port)))
+    loop.run_until_complete(init(loop, args.host, int(args.port), keystore))
     loop.run_forever()
