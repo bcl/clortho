@@ -88,13 +88,16 @@ async def set_key(request):
 
     return web.Response(text=text, status=status)
 
-async def init(loop, host, port):
+def setup_app(loop):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/keystore/version', get_version)
     app.router.add_route('GET', '/keystore/info', show_info)
     app.router.add_route('GET', '/keystore/{key}', get_key)
     app.router.add_route('POST', '/keystore/{key}', set_key)
+    return app
 
+async def init(loop, host, port):
+    app = setup_app(loop)
     srv = await loop.create_server(app.make_handler(), host, port)
     print("Server started at http://%s:%s" % (host, port))
     return srv
