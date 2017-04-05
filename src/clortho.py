@@ -25,7 +25,7 @@ import argparse
 import pickle
 from aiohttp import web
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 args = None
 keystore = {}
 
