@@ -20,31 +20,35 @@
 #
 import os
 import asyncio
+from asyncio import AbstractEventLoop
 import signal
-import argparse
+from argparse import ArgumentParser
 import pickle
 from aiohttp import web
 
-VERSION = "1.1.0"
+from typing import cast, Tuple, Dict
+KeystoreType = Dict[str, Dict[str, str]]
 
-def get_client(request):
-    client = None
+VERSION = "1.1.0"   # type: str
+
+def get_client(request: web.Request) -> str:
+    client = ""   # type: str
     if "X-Forwarded-For" in request.headers:
         client = request.headers["X-Forwarded-For"].split(",")[0]
         if client.startswith("::ffff:"):
             client = client[7:]
     else:
-        peername = request.transport.get_extra_info('peername')
+        peername = request.transport.get_extra_info('peername')     # type: Tuple[str, str]
         if peername is not None:
                 client, _port = peername
     return client
 
-async def get_version(request):
+async def get_version(request: web.Request) -> web.Response:
     text = "version: %s" % VERSION
     status = 200
     return web.Response(text=text, status=status)
 
-async def show_info(request):
+async def show_info(request: web.Request) -> web.Response:
     text = "<html><body><pre>\n"
     text += "\n".join("%s = %s" % (hdr, request.headers[hdr]) for hdr in request.headers)
     peername = request.transport.get_extra_info('peername')
@@ -54,41 +58,41 @@ async def show_info(request):
 
     return web.Response(text=text, content_type="text/html", status=200)
 
-async def get_key(request):
-    keystore = request.app["keystore"]
-    key = request.match_info.get('key')
+async def get_key(request: web.Request) -> web.Response:
+    keystore = request.app["keystore"]      # type: KeystoreType
+    key = request.match_info.get('key')     # type: str
 
-    client = get_client(request)
-    if client and client in keystore and key in keystore[client]:
-        text = keystore[client][key]
-        status = 200
+    client = get_client(request)            # type: str
+    if client in keystore and key in keystore[client]:
+        text = keystore[client][key]        # type: str
+        status = 200                        # type: int
     else:
         text = "%s doesn't exist for %s" % (key, client)
         status = 404
     return web.Response(text=text, status=status)
 
-async def set_key(request):
-    keystore = request.app["keystore"]
-    key = request.match_info.get('key')
-    post_data = await request.post()
+async def set_key(request: web.Request) -> web.Response:
+    keystore = request.app["keystore"]      # type: KeystoreType
+    key = request.match_info.get('key')     # type: str
+    post_data = await request.post()        # type: Dict[str, str]
 
-    client = get_client(request)
-    if client and key and "value" in post_data:
+    client = get_client(request)            # type: str
+    if client != "" and key != "" and "value" in post_data:
         if client not in keystore:
             keystore[client] = {}
-        if post_data["value"]:
+        if post_data["value"] is not None:
             keystore[client][key] = post_data["value"]
         else:
             del keystore[client][key]
-        text = "OK"
-        status = 200
+        text = "OK"                         # type: str
+        status = 200                        # type: int
     else:
         text = "ERROR"
         status = 404
 
     return web.Response(text=text, status=status)
 
-def setup_app(loop):
+def setup_app(loop: AbstractEventLoop) -> web.Application:
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/keystore/version', get_version)
     app.router.add_route('GET', '/keystore/info', show_info)
@@ -96,46 +100,46 @@ def setup_app(loop):
     app.router.add_route('POST', '/keystore/{key}', set_key)
     return app
 
-async def init(loop, host, port, keystore):
+async def init(loop: AbstractEventLoop, host: str, port: int, keystore: KeystoreType):
     app = setup_app(loop)
     app["keystore"] = keystore
     srv = await loop.create_server(app.make_handler(), host, port)
     print("Server started at http://%s:%s" % (host, port))
     return srv
 
-def setup_parser():
-    parser = argparse.ArgumentParser(description="Clortho key server")
+def setup_parser() -> ArgumentParser:
+    parser = ArgumentParser(description="Clortho key server")
     parser.add_argument("--host", default="127.0.0.1", help="Hostname or IP address to bind to")
     parser.add_argument("--port", default="9001", help="Port number to listen to")
     parser.add_argument("--keystore", default="clortho.dat", help="File to store keys in")
 
     return parser
 
-def read_keystore(filename):
+def read_keystore(filename: str) -> KeystoreType:
     if not os.path.exists(filename):
         return {}
 
     with open(filename, "rb") as f:
         try:
-            return pickle.load(f)
+            return cast(KeystoreType, pickle.load(f))
         except EOFError:
             return {}
 
-def clean_exit(signame, loop, filename, keystore):
+def clean_exit(signame: str, loop: AbstractEventLoop, filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     print("got signal %s, exiting" % signame)
     save_keystore(filename, keystore)
 
     loop.stop()
 
-def handle_usr1(filename, keystore):
+def handle_usr1(filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     print("Got USR1 signal, saving keystore")
     save_keystore(filename, keystore)
 
-def hourly_save_keystore(loop, filename, keystore):
+def hourly_save_keystore(loop: AbstractEventLoop, filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     save_keystore(filename, keystore)
     loop.call_later(3600, hourly_save_keystore, loop)
 
-def save_keystore(filename, keystore):
+def save_keystore(filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     #TODO: Write to a tempfile first, rename to target
     with open(filename, "wb") as f:
         pickle.dump(keystore, f, pickle.HIGHEST_PROTOCOL)

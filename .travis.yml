@@ -6,4 +6,4 @@ python:
 # command to install dependencies
 install: "pip install -r requirements.txt"
 # command to run tests
-script: pytest -v
+script: mypy --strict --ignore-missing-imports ./src/clortho.py && pytest -v

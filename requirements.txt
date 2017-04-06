@@ -1,3 +1,4 @@
 aiohttp
+mypy
 pytest
 pytest-aiohttp
