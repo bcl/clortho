@@ -139,7 +139,7 @@ def handle_usr1(filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
 
 def hourly_save_keystore(loop: AbstractEventLoop, filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     save_keystore(filename, keystore)
-    loop.call_later(3600, hourly_save_keystore, loop)
+    loop.call_later(3600, hourly_save_keystore, loop, filename, keystore)
 
 def save_keystore(filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     #TODO: Write to a tempfile first, rename to target
