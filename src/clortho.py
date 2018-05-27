@@ -1,6 +1,6 @@
 # clortho - A simple key/value server
 #
-# Copyright 2014-2017 by Brian C. Lane <bcl@brianlane.com>
+# Copyright 2014-2018 by Brian C. Lane <bcl@brianlane.com>
 # All Rights Reserved
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,15 +18,17 @@
 #
 # Author(s): Brian C. Lane <bcl@brianlane.com>
 #
+from typing import cast, Tuple, Dict
+
 import os
 import asyncio
+from asyncio.base_events import Server
 from asyncio import AbstractEventLoop
 import signal
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import pickle
 from aiohttp import web
 
-from typing import cast, Tuple, Dict
 KeystoreType = Dict[str, Dict[str, str]]
 
 VERSION = "1.1.0"   # type: str
@@ -40,7 +42,7 @@ def get_client(request: web.Request) -> str:
     else:
         peername = request.transport.get_extra_info('peername')     # type: Tuple[str, str]
         if peername is not None:
-                client, _port = peername
+            client, _port = peername
     return client
 
 async def get_version(request: web.Request) -> web.Response:
@@ -100,7 +102,7 @@ def setup_app(loop: AbstractEventLoop) -> web.Application:
     app.router.add_route('POST', '/keystore/{key}', set_key)
     return app
 
-async def init(loop: AbstractEventLoop, host: str, port: int, keystore: KeystoreType):
+async def init(loop: AbstractEventLoop, host: str, port: int, keystore: KeystoreType) -> Server:
     app = setup_app(loop)
     app["keystore"] = keystore
     srv = await loop.create_server(app.make_handler(), host, port)
@@ -144,9 +146,7 @@ def save_keystore(filename: str, keystore: Dict[str, Dict[str, str]]) -> None:
     with open(filename, "wb") as f:
         pickle.dump(keystore, f, pickle.HIGHEST_PROTOCOL)
 
-if __name__=='__main__':
-    parser = setup_parser()
-    args = parser.parse_args()
+def main(args: Namespace) -> None:
     keystore = read_keystore(args.keystore)
 
     loop = asyncio.get_event_loop()
@@ -159,3 +159,6 @@ if __name__=='__main__':
 
     loop.run_until_complete(init(loop, args.host, int(args.port), keystore))
     loop.run_forever()
+
+if __name__ == '__main__':
+    main(setup_parser().parse_args())
